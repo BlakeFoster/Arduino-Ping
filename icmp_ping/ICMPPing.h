@@ -11,7 +11,7 @@
 #include <Ethernet.h>
 #include <utility/w5100.h>
 
-#define REQ_DATASIZE 32
+#define REQ_DATASIZE 64
 #define ICMP_ECHOREPLY 0
 #define ICMP_ECHOREQ 8
 #define PING_TIMEOUT 1000
@@ -19,20 +19,12 @@
 typedef unsigned long time_t;
 
 class ICMPHeader;
-template <int dataSize>
-class ICMPMessage;
+class ICMPPing;
 
-class ICMPPing
+typedef enum Status
 {
-public:
-    ICMPPing(SOCKET s); // construct an ICMPPing object for socket s
-    bool operator()(int nRetries, byte * addr, char * result); // Ping addr, retrying nRetries times if no response is received. 
-    // The respone is store in result.  The return value is true if a response is received, and false otherwise.
-private:
-    bool waitForEchoReply(); // wait for a response
-    size_t sendEchoRequest(byte * addr); // send an ICMP echo request
-    uint8_t receiveEchoReply(byte * addr, uint8_t& TTL, time_t& time); // read a respone
-    SOCKET socket; // socket number to send ping
+    SUCCESS,
+    FAILURE
 };
 
 
@@ -67,6 +59,7 @@ private:
     uint8_t data [dataSize];
 };
 
+
 template <int dataSize>
 inline uint8_t& ICMPMessage<dataSize>::operator[](int i)
 {
@@ -79,7 +72,22 @@ inline const uint8_t& ICMPMessage<dataSize>::operator[](int i) const
     return data[i];
 }
 
+
 typedef ICMPMessage<REQ_DATASIZE> EchoRequest;
 typedef ICMPMessage<REQ_DATASIZE> EchoReply;
+
+
+class ICMPPing
+{
+public:
+    ICMPPing(SOCKET s); // construct an ICMPPing object for socket s
+    Status operator()(int nRetries, byte * addr, char * result); // Ping addr, retrying nRetries times if no response is received. 
+    // The respone is store in result.  The return value is true if a response is received, and false otherwise.
+private:
+    Status waitForEchoReply(); // wait for a response
+    Status sendEchoRequest(byte * addr); // send an ICMP echo request
+    Status receiveEchoReply(byte * addr, uint8_t& TTL, EchoReply& echoReply); // read a respone
+    SOCKET socket; // socket number to send ping
+};
 
 #pragma pack(1)

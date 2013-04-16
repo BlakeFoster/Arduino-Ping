@@ -36,7 +36,7 @@ ICMPPing::ICMPPing(SOCKET s)
 : socket(s)
 {}
 
-bool ICMPPing::operator()(int nRetries, byte * addr, char * result)
+Status ICMPPing::operator()(int nRetries, byte * addr, char * result)
 {
     W5100.execCmdSn(socket, Sock_CLOSE);
     W5100.writeSnIR(socket, 0xFF);
@@ -44,23 +44,31 @@ bool ICMPPing::operator()(int nRetries, byte * addr, char * result)
     W5100.writeSnPROTO(socket, IPPROTO::ICMP);
     W5100.writeSnPORT(socket, 0);
     W5100.execCmdSn(socket, Sock_OPEN);
-    bool rval = false;
+    Status rval = FAILURE;
     for (int i=0; i<nRetries; ++i)
     {
-        if (sendEchoRequest(addr) < 0)
+        if (sendEchoRequest(addr) == FAILURE)
         {
             sprintf(result, "sendEchoRequest failed.");
             break;
         }
-        if (waitForEchoReply())
+        if (waitForEchoReply() == SUCCESS)
         {
             uint8_t TTL;
             byte replyAddr [4];
-            time_t timeSent;
-            receiveEchoReply(replyAddr, TTL, timeSent);
-            time_t time = millis() - timeSent;
-            sprintf(result, "Reply[%d] from: %d.%d.%d.%d: bytes=%d time=%ldms TTL=%d", i + 1, replyAddr[0], replyAddr[1], replyAddr[2], replyAddr[3], REQ_DATASIZE, time, TTL);
-            rval = true;
+            EchoReply echoReply;
+            receiveEchoReply(replyAddr, TTL, echoReply);
+            sprintf(result,
+                    "Reply[%d] from: %d.%d.%d.%d: bytes=%d time=%ldms TTL=%d",
+                    echoReply.icmpHeader.seq,
+                    replyAddr[0],
+                    replyAddr[1],
+                    replyAddr[2],
+                    replyAddr[3],
+                    REQ_DATASIZE,
+                    millis() - echoReply.time,
+                    TTL);
+            rval = SUCCESS;
             break;
         }
         else
@@ -73,17 +81,17 @@ bool ICMPPing::operator()(int nRetries, byte * addr, char * result)
     return rval;
 }
 
-bool ICMPPing::waitForEchoReply()
+Status ICMPPing::waitForEchoReply()
 {
     time_t start = millis();
     while (!W5100.getRXReceivedSize(socket))
     {
-        if (millis() - start > PING_TIMEOUT) return false;
+        if (millis() - start > PING_TIMEOUT) return FAILURE;
     }
-    return true;
+    return SUCCESS;
 }
 
-size_t ICMPPing::sendEchoRequest(byte * addr)
+Status ICMPPing::sendEchoRequest(byte * addr)
 {
     EchoRequest echoReq(ICMP_ECHOREQ);
     for (int i = 0; i < REQ_DATASIZE; i++) echoReq[i] = ' ' + i;
@@ -97,16 +105,15 @@ size_t ICMPPing::sendEchoRequest(byte * addr)
         if (W5100.readSnIR(socket) & SnIR::TIMEOUT)
         {
             W5100.writeSnIR(socket, (SnIR::SEND_OK | SnIR::TIMEOUT));
-            return 0;
+            return FAILURE;
         }
     }
     W5100.writeSnIR(socket, SnIR::SEND_OK);
-    return sizeof(EchoRequest);
+    return SUCCESS;
 }
 
-uint8_t ICMPPing::receiveEchoReply(byte * addr, uint8_t& TTL, time_t& time)
+Status ICMPPing::receiveEchoReply(byte * addr, uint8_t& TTL, EchoReply& echoReply)
 {
-    EchoReply echoReply;
     uint16_t port = 0;
     uint8_t header [6];
     uint8_t buffer = W5100.readSnRX_RD(socket);
@@ -121,8 +128,7 @@ uint8_t ICMPPing::receiveEchoReply(byte * addr, uint8_t& TTL, time_t& time)
     W5100.writeSnRX_RD(socket, buffer);
     W5100.execCmdSn(socket, Sock_RECV);
     TTL = W5100.readSnTTL(socket);
-    time = echoReply.time;
-    return echoReply.icmpHeader.type;
+    return echoReply.icmpHeader.type == ICMP_ECHOREQ ? SUCCESS : FAILURE;
 }
 
 ICMPHeader::ICMPHeader(uint8_t Type)
