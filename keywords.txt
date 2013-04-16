@@ -1,0 +1,22 @@
+#######################################
+# Syntax Coloring Map For Ethernet
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+ICMPPing	KEYWORD1
+ICMPHeader	KEYWORD1
+ICMPMessage	KEYWORD1
+EchoRequest	KEYWORD1
+EchoReply	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+
