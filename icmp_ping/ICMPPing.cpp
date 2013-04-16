@@ -44,20 +44,25 @@ Status ICMPPing::operator()(int nRetries, byte * addr, char * result)
     W5100.writeSnPROTO(socket, IPPROTO::ICMP);
     W5100.writeSnPORT(socket, 0);
     W5100.execCmdSn(socket, Sock_OPEN);
+
     Status rval = FAILURE;
+
+    EchoRequest echoReq(ICMP_ECHOREQ);
+    for (int i = 0; i < REQ_DATASIZE; i++) echoReq[i] = ' ' + i;
+    echoReq.initChecksum();
+
     for (int i=0; i<nRetries; ++i)
     {
-        if (sendEchoRequest(addr) == FAILURE)
+        if (sendEchoRequest(addr, echoReq) == FAILURE)
         {
             sprintf(result, "sendEchoRequest failed.");
             break;
         }
         if (waitForEchoReply() == SUCCESS)
         {
-            uint8_t TTL;
             byte replyAddr [4];
             EchoReply echoReply;
-            receiveEchoReply(replyAddr, TTL, echoReply);
+            receiveEchoReply(replyAddr, echoReply);
             sprintf(result,
                     "Reply[%d] from: %d.%d.%d.%d: bytes=%d time=%ldms TTL=%d",
                     echoReply.icmpHeader.seq,
@@ -67,7 +72,7 @@ Status ICMPPing::operator()(int nRetries, byte * addr, char * result)
                     replyAddr[3],
                     REQ_DATASIZE,
                     millis() - echoReply.time,
-                    TTL);
+                    echoReply.ttl);
             rval = SUCCESS;
             break;
         }
@@ -91,11 +96,8 @@ Status ICMPPing::waitForEchoReply()
     return SUCCESS;
 }
 
-Status ICMPPing::sendEchoRequest(byte * addr)
+Status ICMPPing::sendEchoRequest(byte * addr, const EchoRequest& echoReq)
 {
-    EchoRequest echoReq(ICMP_ECHOREQ);
-    for (int i = 0; i < REQ_DATASIZE; i++) echoReq[i] = ' ' + i;
-    echoReq.initChecksum();
     W5100.writeSnDIPR(socket, addr);
     W5100.writeSnDPORT(socket, 0);
     W5100.send_data_processing(socket, (uint8_t *)&echoReq, sizeof(EchoRequest));
@@ -112,7 +114,7 @@ Status ICMPPing::sendEchoRequest(byte * addr)
     return SUCCESS;
 }
 
-Status ICMPPing::receiveEchoReply(byte * addr, uint8_t& TTL, EchoReply& echoReply)
+Status ICMPPing::receiveEchoReply(byte * addr, EchoReply& echoReply)
 {
     uint16_t port = 0;
     uint8_t header [6];
@@ -127,7 +129,7 @@ Status ICMPPing::receiveEchoReply(byte * addr, uint8_t& TTL, EchoReply& echoRepl
     buffer += dataLen;
     W5100.writeSnRX_RD(socket, buffer);
     W5100.execCmdSn(socket, Sock_RECV);
-    TTL = W5100.readSnTTL(socket);
+    echoReply.ttl = W5100.readSnTTL(socket);
     return echoReply.icmpHeader.type == ICMP_ECHOREQ ? SUCCESS : FAILURE;
 }
 

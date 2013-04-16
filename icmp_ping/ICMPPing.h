@@ -59,6 +59,14 @@ private:
     uint8_t data [dataSize];
 };
 
+typedef ICMPMessage<REQ_DATASIZE> EchoRequest;
+
+
+class EchoReply : public ICMPMessage<REQ_DATASIZE>
+{
+public:
+    uint8_t ttl;
+};
 
 template <int dataSize>
 inline uint8_t& ICMPMessage<dataSize>::operator[](int i)
@@ -73,10 +81,6 @@ inline const uint8_t& ICMPMessage<dataSize>::operator[](int i) const
 }
 
 
-typedef ICMPMessage<REQ_DATASIZE> EchoRequest;
-typedef ICMPMessage<REQ_DATASIZE> EchoReply;
-
-
 class ICMPPing
 {
 public:
@@ -85,8 +89,8 @@ public:
     // The respone is store in result.  The return value is true if a response is received, and false otherwise.
 private:
     Status waitForEchoReply(); // wait for a response
-    Status sendEchoRequest(byte * addr); // send an ICMP echo request
-    Status receiveEchoReply(byte * addr, uint8_t& TTL, EchoReply& echoReply); // read a respone
+    Status sendEchoRequest(byte * addr, const EchoRequest& echoRequest); // send an ICMP echo request
+    Status receiveEchoReply(byte * addr, EchoReply& echoReply); // read a respone
     SOCKET socket; // socket number to send ping
 };
 
