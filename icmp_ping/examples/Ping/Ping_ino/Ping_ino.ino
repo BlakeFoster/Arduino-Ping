@@ -34,7 +34,7 @@ void setup()
 void loop()
 {
   ICMPEchoReply echoReply = ping(pingAddr, 4);
-  if (echoReply.status == SUCCESS || true)
+  if (echoReply.status == SUCCESS)
   {
     sprintf(buffer,
             "Reply[%d] from: %d.%d.%d.%d: bytes=%d time=%ldms TTL=%d",
