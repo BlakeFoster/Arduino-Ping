@@ -16,3 +16,6 @@ To use, copy the icmp_ping directory libraries into the libraries of your Arduin
 e.g. cp ~/Arduino-Ping/icmp_ping /usr/share/arduino/libraries/icmp_ping
 
 Then restart the Arduino software if necessary, and icmp_ping should be available under the libraries dropdown.
+
+See the included sketch for example usage.
+See the header (ICMP.h) for API documentation.
