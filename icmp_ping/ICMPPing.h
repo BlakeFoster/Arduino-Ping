@@ -25,12 +25,14 @@ class ICMPPing;
 typedef enum Status
 {
     /*
-    Indicates whether a ping succeeded or failed due to one of various error conditions.
+    Indicates whether a ping succeeded or failed due to one of various error
+    conditions. These correspond to error conditions that occur in this
+    library, not anything defined in the ICMP protocol.
     */
     SUCCESS = 0,
-    SEND_TIMEOUT = 1,
-    NO_RESPONSE = 2,
-    BAD_RESPONSE = 3
+    SEND_TIMEOUT = 1, // Timed out sending the request
+    NO_RESPONSE = 2, // Died waiting for a response
+    BAD_RESPONSE = 3 // we got back the wrong type
 };
 
 
@@ -115,7 +117,8 @@ public:
     @param nRetries: Number of times to rety before giving up.
     @return: An ICMPEchoReply containing the response. The status field in
     the return value indicates whether the echo request succeeded or
-    failed.
+    failed. If the request failed, the status indicates the reason for
+    failure on the last retry.
     */
     ICMPEchoReply operator()(byte * addr, int nRetries);
 
