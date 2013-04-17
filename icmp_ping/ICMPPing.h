@@ -24,15 +24,21 @@ class ICMPPing;
 
 typedef enum Status
 {
-    SUCCESS = 1,
-    SEND_TIMEOUT = 2,
-    NO_RESPONSE = 3,
-    BAD_RESPONSE = 4
+    /*
+    Indicates whether a ping succeeded or failed due to one of various error conditions.
+    */
+    SUCCESS = 0,
+    SEND_TIMEOUT = 1,
+    NO_RESPONSE = 2,
+    BAD_RESPONSE = 3
 };
 
 
 struct ICMPHeader
 {
+    /*
+    Header for an ICMP packet. Does not include the IP header.
+    */
     uint8_t type;
     uint8_t code;
     uint16_t checksum;
@@ -40,8 +46,30 @@ struct ICMPHeader
 
 struct ICMPEcho
 {
+    /*
+    Contents of an ICMP echo packet, including the ICMP header. Does not
+    include the IP header.
+    */
+
+    /*
+    This constructor sets all fields and calculates the checksum. It is used
+    to create ICMP packet data when we send a request.
+    @param type: ICMP_ECHOREQ or ICMP_ECHOREP.
+    @param _id: Some arbitrary id. Usually set once per process.
+    @param _seq: The sequence number. Usually started at zero and incremented
+    once per request.
+    @param payload: An arbitrary chunk of data that we expect to get back in
+    the response.
+    */
     ICMPEcho(uint8_t type, uint16_t _id, uint16_t _seq, uint8_t * _payload);
+
+    /*
+    This constructor leaves everything zero. This is used when we receive a
+    response, since we nuke whatever is here already when we copy the packet
+    data out of the W5100.
+    */
     ICMPEcho();
+
     ICMPHeader header;
     uint16_t id;
     uint16_t seq;
@@ -51,6 +79,15 @@ struct ICMPEcho
 
 struct ICMPEchoReply
 {
+    /*
+    Struct returned by ICMPPing().
+    @param content: The packet data, including the ICMP header.
+    @param ttl: Time to live
+    @param status: SUCCESS if the ping succeeded. One of various error codes
+    if it failed.
+    @param addr: The ip address that we received the response from. Something
+    is borked if this doesn't match the IP address we pinged.
+    */
     ICMPEcho content;
     uint8_t ttl;
     Status status;
@@ -59,18 +96,49 @@ struct ICMPEchoReply
 
 class ICMPPing
 {
+    /*
+    Function-object for sending ICMP ping requests.
+    */
+
 public:
-    ICMPPing(SOCKET s, uint8_t id); // construct an ICMPPing object for socket s
-    void operator()(byte * addr, int nRetries, ICMPEchoReply& result); // Ping addr, retrying nRetries times if no response is received.
-    ICMPEchoReply operator()(byte * addr, int nRetries); // Ping addr, retrying nRetries times if no response is received. 
-    // The respone is store in result.  The return value is true if a response is received, and false otherwise.
+    /*
+    Construct an ICMP ping object.
+    @param socket: The socket number in the W5100.
+    @param id: The id to put in the ping packets. Can be pretty much any
+    arbitrary number.
+    */
+    ICMPPing(SOCKET s, uint8_t id);
+
+    /*
+    Pings the given IP address.
+    @param addr: IP address to ping, as an array of four octets.
+    @param nRetries: Number of times to rety before giving up.
+    @return: An ICMPEchoReply containing the response. The status field in
+    the return value indicates whether the echo request succeeded or
+    failed.
+    */
+    ICMPEchoReply operator()(byte * addr, int nRetries);
+
+    /*
+    This overloaded version of the () operator takes a (hopefully blank)
+    ICMPEchoReply as parameter instead of constructing one internally and
+    then copying it on return. This creates a very small improvement in
+    efficiency at the cost of making your code uglier.
+    @param addr: IP address to ping, as an array of four octets.
+    @param nRetries: Number of times to rety before giving up.
+    @param result: ICMPEchoReply that will hold the result.
+    */
+    void operator()(byte * addr, int nRetries, ICMPEchoReply& result);
+
 private:
-    Status waitForEchoReply(); // wait for a response
-    Status sendEchoRequest(byte * addr, const ICMPEcho& echoReq); // send an ICMP echo request
-    void receiveEchoReply(ICMPEchoReply& echoReply); // read a resposne
+
+    Status waitForEchoReply();
+    Status sendEchoRequest(byte * addr, const ICMPEcho& echoReq);
+    void receiveEchoReply(ICMPEchoReply& echoReply);
+
     uint8_t _id;
     uint8_t _nextSeq;
-    SOCKET _socket; // socket number to send ping
+    SOCKET _socket;
 };
 
 #pragma pack(1)
