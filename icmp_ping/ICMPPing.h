@@ -14,6 +14,7 @@
 #define REQ_DATASIZE 64
 #define ICMP_ECHOREPLY 0
 #define ICMP_ECHOREQ 8
+#define ICMP_ECHOREP 0
 #define PING_TIMEOUT 1000
 
 typedef unsigned long time_t;
@@ -23,75 +24,53 @@ class ICMPPing;
 
 typedef enum Status
 {
-    SUCCESS,
-    FAILURE
+    SUCCESS = 1,
+    SEND_TIMEOUT = 2,
+    NO_RESPONSE = 3,
+    BAD_RESPONSE = 4
 };
 
 
-class ICMPHeader
+struct ICMPHeader
 {
-    friend class ICMPPing;
-public:
-    ICMPHeader(uint8_t Type);
-    ICMPHeader();
     uint8_t type;
     uint8_t code;
     uint16_t checksum;
+};
+
+struct ICMPEcho
+{
+    ICMPEcho(uint8_t type, uint16_t _id, uint16_t _seq, uint8_t * _payload);
+    ICMPEcho();
+    ICMPHeader header;
     uint16_t id;
     uint16_t seq;
-    static int lastSeq;
-    static int lastId;
-};
-
-template <int dataSize>
-class ICMPMessage
-{
-    friend class ICMPPing;
-public:
-    ICMPMessage(uint8_t type);
-    ICMPMessage();
-    void initChecksum();
-    uint8_t& operator[](int i);
-    const uint8_t& operator[](int i) const;
-    ICMPHeader icmpHeader;
     time_t time;
-private:
-    uint8_t data [dataSize];
+    uint8_t payload [REQ_DATASIZE];
 };
 
-typedef ICMPMessage<REQ_DATASIZE> EchoRequest;
-
-
-class EchoReply : public ICMPMessage<REQ_DATASIZE>
+struct ICMPEchoReply
 {
-public:
+    ICMPEcho content;
     uint8_t ttl;
+    Status status;
+    uint8_t addr [4];
 };
-
-template <int dataSize>
-inline uint8_t& ICMPMessage<dataSize>::operator[](int i)
-{
-    return data[i];
-}
-
-template <int dataSize>
-inline const uint8_t& ICMPMessage<dataSize>::operator[](int i) const
-{
-    return data[i];
-}
-
 
 class ICMPPing
 {
 public:
-    ICMPPing(SOCKET s); // construct an ICMPPing object for socket s
-    Status operator()(int nRetries, byte * addr, char * result); // Ping addr, retrying nRetries times if no response is received. 
+    ICMPPing(SOCKET s, uint8_t id); // construct an ICMPPing object for socket s
+    void operator()(byte * addr, int nRetries, ICMPEchoReply& result); // Ping addr, retrying nRetries times if no response is received.
+    ICMPEchoReply operator()(byte * addr, int nRetries); // Ping addr, retrying nRetries times if no response is received. 
     // The respone is store in result.  The return value is true if a response is received, and false otherwise.
 private:
     Status waitForEchoReply(); // wait for a response
-    Status sendEchoRequest(byte * addr, const EchoRequest& echoRequest); // send an ICMP echo request
-    Status receiveEchoReply(byte * addr, EchoReply& echoReply); // read a respone
-    SOCKET socket; // socket number to send ping
+    Status sendEchoRequest(byte * addr, const ICMPEcho& echoReq); // send an ICMP echo request
+    void receiveEchoReply(ICMPEchoReply& echoReply); // read a resposne
+    uint8_t _id;
+    uint8_t _nextSeq;
+    SOCKET _socket; // socket number to send ping
 };
 
 #pragma pack(1)
