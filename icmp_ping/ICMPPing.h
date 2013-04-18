@@ -72,7 +72,7 @@ struct ICMPEcho
     */
     ICMPEcho();
 
-    ICMPHeader header;
+    ICMPHeader icmpHeader;
     uint16_t id;
     uint16_t seq;
     time_t time;
@@ -83,14 +83,14 @@ struct ICMPEchoReply
 {
     /*
     Struct returned by ICMPPing().
-    @param content: The packet data, including the ICMP header.
+    @param data: The packet data, including the ICMP header.
     @param ttl: Time to live
     @param status: SUCCESS if the ping succeeded. One of various error codes
     if it failed.
     @param addr: The ip address that we received the response from. Something
     is borked if this doesn't match the IP address we pinged.
     */
-    ICMPEcho content;
+    ICMPEcho data;
     uint8_t ttl;
     Status status;
     uint8_t addr [4];
