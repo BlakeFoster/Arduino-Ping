@@ -39,13 +39,13 @@ void loop()
   {
     sprintf(buffer,
             "Reply[%d] from: %d.%d.%d.%d: bytes=%d time=%ldms TTL=%d",
-            echoReply.content.seq,
+            echoReply.data.seq,
             echoReply.addr[0],
             echoReply.addr[1],
             echoReply.addr[2],
             echoReply.addr[3],
             REQ_DATASIZE,
-            millis() - echoReply.content.time,
+            millis() - echoReply.data.time,
             echoReply.ttl);
   }
   else
