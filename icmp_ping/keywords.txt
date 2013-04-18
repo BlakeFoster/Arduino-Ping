@@ -8,9 +8,9 @@
 
 ICMPPing	KEYWORD1
 ICMPHeader	KEYWORD1
-ICMPMessage	KEYWORD1
-EchoRequest	KEYWORD1
-EchoReply	KEYWORD1
+ICMPEcho	KEYWORD1
+ICMPEchoReply	KEYWORD1
+Status          KEYWORD1
 
 #######################################
 # Methods and Functions (KEYWORD2)
@@ -20,3 +20,12 @@ EchoReply	KEYWORD1
 # Constants (LITERAL1)
 #######################################
 
+SUCCESS         LITERAL1
+SEND_TIMEOUT    LITERAL1
+NO_RESPONSE     LITERAL1
+BAD_RESPONSE    LITERAL1 
+REQ_DATASIZE    LITERAL1
+ICMP_ECHOREPLY  LITERAL1
+ICMP_ECHOREQ    LITERAL1
+ICMP_ECHOREP    LITERAL1
+PING_TIMEOUT    LITERAL1

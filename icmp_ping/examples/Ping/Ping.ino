@@ -17,11 +17,12 @@
 
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED}; // max address for ethernet shield
 byte ip[] = {192,168,2,177}; // ip address for ethernet shield
-byte pingAddr[] = {192,168,2,1}; // ip address to ping
+byte pingAddr[] = {74,125,26,147}; // ip address to ping
 
 SOCKET pingSocket = 0;
 
 char buffer [256];
+ICMPPing ping(pingSocket, (uint16_t)random(0, 255));
 
 void setup() 
 {
@@ -32,8 +33,24 @@ void setup()
 
 void loop()
 {
-  ICMPPing ping(pingSocket);
-  ping(4, pingAddr, buffer);
+  ICMPEchoReply echoReply = ping(pingAddr, 4);
+  if (echoReply.status == SUCCESS)
+  {
+    sprintf(buffer,
+            "Reply[%d] from: %d.%d.%d.%d: bytes=%d time=%ldms TTL=%d",
+            echoReply.content.seq,
+            echoReply.addr[0],
+            echoReply.addr[1],
+            echoReply.addr[2],
+            echoReply.addr[3],
+            REQ_DATASIZE,
+            millis() - echoReply.content.time,
+            echoReply.ttl);
+  }
+  else
+  {
+    sprintf(buffer, "Echo request failed; %d", echoReply.status);
+  }
   Serial.println(buffer);
   delay(500);
 }
