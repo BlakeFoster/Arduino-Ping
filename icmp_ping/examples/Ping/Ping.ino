@@ -18,7 +18,7 @@
 
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED}; // max address for ethernet shield
 byte ip[] = {192,168,2,177}; // ip address for ethernet shield
-byte pingAddr[] = {74,125,26,147}; // ip address to ping
+IPAddress pingAddr(74,125,26,147); // ip address to ping
 
 SOCKET pingSocket = 0;
 

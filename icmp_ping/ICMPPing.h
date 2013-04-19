@@ -93,7 +93,7 @@ struct ICMPEchoReply
     ICMPEcho data;
     uint8_t ttl;
     Status status;
-    uint8_t addr [4];
+    IPAddress addr;
 };
 
 class ICMPPing
@@ -120,7 +120,7 @@ public:
     failed. If the request failed, the status indicates the reason for
     failure on the last retry.
     */
-    ICMPEchoReply operator()(byte * addr, int nRetries);
+    ICMPEchoReply operator()(const IPAddress&, int nRetries);
 
     /*
     This overloaded version of the () operator takes a (hopefully blank)
@@ -131,12 +131,12 @@ public:
     @param nRetries: Number of times to rety before giving up.
     @param result: ICMPEchoReply that will hold the result.
     */
-    void operator()(byte * addr, int nRetries, ICMPEchoReply& result);
+    void operator()(const IPAddress& addr, int nRetries, ICMPEchoReply& result);
 
 private:
 
     Status waitForEchoReply();
-    Status sendEchoRequest(byte * addr, const ICMPEcho& echoReq);
+    Status sendEchoRequest(const IPAddress& addr, const ICMPEcho& echoReq);
     void receiveEchoReply(ICMPEchoReply& echoReply);
 
     uint8_t _id;

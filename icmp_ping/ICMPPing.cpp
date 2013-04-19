@@ -57,7 +57,7 @@ ICMPPing::ICMPPing(SOCKET socket, uint8_t id)
 : _socket(socket), _id(id)
 {}
 
-void ICMPPing::operator()(byte * addr, int nRetries, ICMPEchoReply& result)
+void ICMPPing::operator()(const IPAddress& addr, int nRetries, ICMPEchoReply& result)
 {
     W5100.execCmdSn(_socket, Sock_CLOSE);
     W5100.writeSnIR(_socket, 0xFF);
@@ -89,7 +89,7 @@ void ICMPPing::operator()(byte * addr, int nRetries, ICMPEchoReply& result)
     W5100.writeSnIR(_socket, 0xFF);
 }
 
-ICMPEchoReply ICMPPing::operator()(byte * addr, int nRetries)
+ICMPEchoReply ICMPPing::operator()(const IPAddress& addr, int nRetries)
 {
     ICMPEchoReply reply;
     operator()(addr, nRetries, reply);
@@ -106,9 +106,13 @@ Status ICMPPing::waitForEchoReply()
     return SUCCESS;
 }
 
-Status ICMPPing::sendEchoRequest(byte * addr, const ICMPEcho& echoReq)
+Status ICMPPing::sendEchoRequest(const IPAddress& addr, const ICMPEcho& echoReq)
 {
-    W5100.writeSnDIPR(_socket, addr);
+    // I wish there were a better way of doing this, but if we use the uint32_t
+    // case operator, we're forced to (1) cast away the constness, and (2) deal
+    // with an endianness nightmare.
+    uint8_t addri [] = {addr[0], addr[1], addr[2], addr[3]};
+    W5100.writeSnDIPR(_socket, addri);
     // The port isn't used, becuause ICMP is a network-layer protocol. So we
     // write zero. This probably isn't actually necessary.
     W5100.writeSnDPORT(_socket, 0);
