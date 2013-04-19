@@ -8,28 +8,38 @@
  */
 
 #include "ICMPPing.h"
+#include <util.h>
 
-uint16_t _checksum(ICMPEcho * echo)
+inline uint16_t _makeUint16(const uint8_t& highOrder, const uint8_t& lowOrder)
+{
+    // make a 16-bit unsigned integer given the low order and high order bytes.
+    // lowOrder first because the Arduino is little endian.
+    uint8_t value [] = {lowOrder, highOrder};
+    return *(uint16_t *)&value;
+}
+
+uint16_t _checksum(const ICMPEcho& echo)
 {
     // calculate the checksum of an ICMPEcho with all fields but icmpHeader.checksum populated
-    int nleft = sizeof(ICMPEcho);
-    uint16_t * w = (uint16_t *)echo;
     unsigned long sum = 0;
-    while(nleft > 1)  
+
+    // add the header, bytes reversed since we're using little-endian arithmetic.
+    sum += _makeUint16(echo.icmpHeader.type, echo.icmpHeader.code);
+
+    // add id and sequence
+    sum += echo.id + echo.seq;
+
+    // add time, one half at a time.
+    uint16_t const * time = (uint16_t const *)&echo.time;
+    sum += *time + *(time + 1);
+    
+    // add the payload
+    for (uint8_t const * b = echo.payload; b < echo.payload + sizeof(echo.payload); b+=2)
     {
-        // we skip the checksum field itself when calculating the checksum.
-        if (w != &echo->icmpHeader.checksum) sum += *w;
-        w++;
-        nleft -= 2;
-    }
-    // If the size of ICMPEcho in bytes is odd, we'll have one trailing byte left over to add.
-    if(nleft)
-    {
-        uint16_t u = 0;
-        *(uint8_t *)(&u) = *(uint8_t *)w;
-        sum += u;
+        sum += _makeUint16(*b, *(b + 1));
     }
 
+    // ones complement of ones complement sum
     sum = (sum >> 16) + (sum & 0xffff);
     sum += (sum >> 16);
     return ~sum;
@@ -41,7 +51,7 @@ ICMPEcho::ICMPEcho(uint8_t type, uint16_t _id, uint16_t _seq, uint8_t * _payload
     memcpy(payload, _payload, REQ_DATASIZE);
     icmpHeader.type = type;
     icmpHeader.code = 0;
-    icmpHeader.checksum = _checksum(this);
+    icmpHeader.checksum = _checksum(*this);
 }
 
 ICMPEcho::ICMPEcho()
@@ -51,6 +61,32 @@ ICMPEcho::ICMPEcho()
     icmpHeader.code = 0;
     icmpHeader.type = 0;
     icmpHeader.checksum = 0;
+}
+
+void ICMPEcho::serialize(uint8_t * binData) const
+{
+    *(binData++) = icmpHeader.type;
+    *(binData++) = icmpHeader.code;
+
+    *(uint16_t *)binData = htons(icmpHeader.checksum); binData += 2;
+    *(uint16_t *)binData = htons(id);                  binData += 2;
+    *(uint16_t *)binData = htons(seq);                 binData += 2;
+    *(time_t *)  binData = htonl(time);                binData += 4;
+
+    memcpy(binData, payload, sizeof(payload));
+}
+
+void ICMPEcho::deserialize(uint8_t const * binData)
+{
+    icmpHeader.type = *(binData++);
+    icmpHeader.code = *(binData++);
+
+    icmpHeader.checksum = ntohs(*(uint16_t *)binData); binData += 2;
+    id                  = ntohs(*(uint16_t *)binData); binData += 2;
+    seq                 = ntohs(*(uint16_t *)binData); binData += 2;
+    time                = ntohl(*(time_t *)binData);   binData += 4;
+
+    memcpy(payload, binData, sizeof(payload));
 }
 
 ICMPPing::ICMPPing(SOCKET socket, uint8_t id)
@@ -109,14 +145,18 @@ Status ICMPPing::waitForEchoReply()
 Status ICMPPing::sendEchoRequest(const IPAddress& addr, const ICMPEcho& echoReq)
 {
     // I wish there were a better way of doing this, but if we use the uint32_t
-    // case operator, we're forced to (1) cast away the constness, and (2) deal
+    // cast operator, we're forced to (1) cast away the constness, and (2) deal
     // with an endianness nightmare.
     uint8_t addri [] = {addr[0], addr[1], addr[2], addr[3]};
     W5100.writeSnDIPR(_socket, addri);
     // The port isn't used, becuause ICMP is a network-layer protocol. So we
     // write zero. This probably isn't actually necessary.
     W5100.writeSnDPORT(_socket, 0);
-    W5100.send_data_processing(_socket, (uint8_t *)&echoReq, sizeof(ICMPEcho));
+
+    uint8_t serialized [sizeof(ICMPEcho)];
+    echoReq.serialize(serialized);
+
+    W5100.send_data_processing(_socket, serialized, sizeof(ICMPEcho));
     W5100.execCmdSn(_socket, Sock_SEND);
     while ((W5100.readSnIR(_socket) & SnIR::SEND_OK) != SnIR::SEND_OK) 
     {
@@ -139,8 +179,12 @@ void ICMPPing::receiveEchoReply(ICMPEchoReply& echoReply)
     for (int i=0; i<4; ++i) echoReply.addr[i] = ipHeader[i];
     uint8_t dataLen = ipHeader[4];
     dataLen = (dataLen << 8) + ipHeader[5];
+
+    uint8_t serialized [sizeof(ICMPEcho)];
     if (dataLen > sizeof(ICMPEcho)) dataLen = sizeof(ICMPEcho);
-    W5100.read_data(_socket, (uint8_t *)buffer, (uint8_t *)&echoReply.data, dataLen);
+    W5100.read_data(_socket, (uint8_t *)buffer, serialized, dataLen);
+    echoReply.data.deserialize(serialized);
+
     buffer += dataLen;
     W5100.writeSnRX_RD(_socket, buffer);
     W5100.execCmdSn(_socket, Sock_RECV);

@@ -46,6 +46,7 @@ struct ICMPHeader
     uint16_t checksum;
 };
 
+
 struct ICMPEcho
 {
     /*
@@ -77,7 +78,17 @@ struct ICMPEcho
     uint16_t seq;
     time_t time;
     uint8_t payload [REQ_DATASIZE];
+
+    /*
+    Serialize the header as a byte array, in big endian format.
+    */
+    void serialize(byte * binData) const;
+    /*
+    Serialize the header as a byte array, in big endian format.
+    */
+    void deserialize(byte const * binData);
 };
+
 
 struct ICMPEchoReply
 {
@@ -95,6 +106,7 @@ struct ICMPEchoReply
     Status status;
     IPAddress addr;
 };
+
 
 class ICMPPing
 {
