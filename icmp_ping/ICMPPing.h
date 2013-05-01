@@ -147,9 +147,8 @@ public:
 
 private:
 
-    Status waitForEchoReply();
     Status sendEchoRequest(const IPAddress& addr, const ICMPEcho& echoReq);
-    void receiveEchoReply(ICMPEchoReply& echoReply);
+    void receiveEchoReply(const ICMPEcho& echoReq, ICMPEchoReply& echoReply);
 
     uint8_t _id;
     uint8_t _nextSeq;

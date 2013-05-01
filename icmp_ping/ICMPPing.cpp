@@ -110,13 +110,13 @@ void ICMPPing::operator()(const IPAddress& addr, int nRetries, ICMPEchoReply& re
     for (int i=0; i<nRetries; ++i)
     {
         result.status = sendEchoRequest(addr, echoReq);
-        if (result.status != SUCCESS) continue;
-
-        result.status = waitForEchoReply();
         if (result.status == SUCCESS)
         {
             byte replyAddr [4];
-            receiveEchoReply(result);
+            receiveEchoReply(echoReq, result);
+        }
+        if (result.status == SUCCESS)
+        {
             break;
         }
     }
@@ -132,16 +132,6 @@ ICMPEchoReply ICMPPing::operator()(const IPAddress& addr, int nRetries)
     return reply;
 }
 
-Status ICMPPing::waitForEchoReply()
-{
-    time_t start = millis();
-    while (!W5100.getRXReceivedSize(_socket))
-    {
-        if (millis() - start > PING_TIMEOUT) return NO_RESPONSE;
-    }
-    return SUCCESS;
-}
-
 Status ICMPPing::sendEchoRequest(const IPAddress& addr, const ICMPEcho& echoReq)
 {
     // I wish there were a better way of doing this, but if we use the uint32_t
@@ -149,6 +139,7 @@ Status ICMPPing::sendEchoRequest(const IPAddress& addr, const ICMPEcho& echoReq)
     // with an endianness nightmare.
     uint8_t addri [] = {addr[0], addr[1], addr[2], addr[3]};
     W5100.writeSnDIPR(_socket, addri);
+    W5100.writeSnTTL(_socket, 42);
     // The port isn't used, becuause ICMP is a network-layer protocol. So we
     // write zero. This probably isn't actually necessary.
     W5100.writeSnDPORT(_socket, 0);
@@ -170,24 +161,39 @@ Status ICMPPing::sendEchoRequest(const IPAddress& addr, const ICMPEcho& echoReq)
     return SUCCESS;
 }
 
-void ICMPPing::receiveEchoReply(ICMPEchoReply& echoReply)
+void ICMPPing::receiveEchoReply(const ICMPEcho& echoReq, ICMPEchoReply& echoReply)
 {
-    uint8_t ipHeader [6];
-    uint8_t buffer = W5100.readSnRX_RD(_socket);
-    W5100.read_data(_socket, (uint8_t *)buffer, ipHeader, sizeof(ipHeader));
-    buffer += sizeof(ipHeader);
-    for (int i=0; i<4; ++i) echoReply.addr[i] = ipHeader[i];
-    uint8_t dataLen = ipHeader[4];
-    dataLen = (dataLen << 8) + ipHeader[5];
+    time_t start = millis();
+    while (millis() - start < PING_TIMEOUT)
+    {
+        if (W5100.getRXReceivedSize(_socket))
+        {
+            uint8_t ipHeader [6];
+            uint8_t buffer = W5100.readSnRX_RD(_socket);
+            W5100.read_data(_socket, (uint8_t *)buffer, ipHeader, sizeof(ipHeader));
+            buffer += sizeof(ipHeader);
+            for (int i=0; i<4; ++i) echoReply.addr[i] = ipHeader[i];
+            uint8_t dataLen = ipHeader[4];
+            dataLen = (dataLen << 8) + ipHeader[5];
 
-    uint8_t serialized [sizeof(ICMPEcho)];
-    if (dataLen > sizeof(ICMPEcho)) dataLen = sizeof(ICMPEcho);
-    W5100.read_data(_socket, (uint8_t *)buffer, serialized, dataLen);
-    echoReply.data.deserialize(serialized);
+            uint8_t serialized [sizeof(ICMPEcho)];
+            if (dataLen > sizeof(ICMPEcho)) dataLen = sizeof(ICMPEcho);
+            W5100.read_data(_socket, (uint8_t *)buffer, serialized, dataLen);
+            echoReply.data.deserialize(serialized);
 
-    buffer += dataLen;
-    W5100.writeSnRX_RD(_socket, buffer);
-    W5100.execCmdSn(_socket, Sock_RECV);
-    echoReply.ttl = W5100.readSnTTL(_socket);
-    echoReply.status = (echoReply.data.icmpHeader.type == ICMP_ECHOREP) ? SUCCESS : BAD_RESPONSE;
+            buffer += dataLen;
+            W5100.writeSnRX_RD(_socket, buffer);
+            W5100.execCmdSn(_socket, Sock_RECV);
+
+            if (echoReply.data.icmpHeader.type == ICMP_ECHOREP &&
+                echoReply.data.id == echoReq.id &&
+                echoReply.data.seq == echoReq.seq)
+            {
+                echoReply.ttl = W5100.readSnTTL(_socket);
+                echoReply.status = SUCCESS;
+                return;
+            }
+        }
+    }
+    echoReply.status = NO_RESPONSE;
 }
