@@ -185,6 +185,8 @@ void ICMPPing::receiveEchoReply(const ICMPEcho& echoReq, ICMPEchoReply& echoRepl
             W5100.writeSnRX_RD(_socket, buffer);
             W5100.execCmdSn(_socket, Sock_RECV);
 
+            // Since there aren't any ports in ICMP, we need to manually inspect the response
+            // to see if it originated from the request we sent out.
             if (echoReply.data.icmpHeader.type == ICMP_ECHOREP &&
                 echoReply.data.id == echoReq.id &&
                 echoReply.data.seq == echoReq.seq)
