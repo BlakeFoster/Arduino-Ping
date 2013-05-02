@@ -11,7 +11,7 @@ Arduino-Ping
 
 ICMP ping library for the Arduino
 
-To use, copy the icmp_ping directory libraries into the libraries of your Arduino folder.
+To use, copy the icmp_ping directory into the libraries directory of your Arduino folder.
 
 e.g. cp ~/Arduino-Ping/icmp_ping /usr/share/arduino/libraries/icmp_ping
 
