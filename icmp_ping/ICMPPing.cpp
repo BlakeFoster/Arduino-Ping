@@ -195,7 +195,7 @@ void ICMPPing::receiveEchoReply(const ICMPEcho& echoReq, const IPAddress& addr, 
             // to see if it originated from the request we sent out.
             switch (echoReply.data.icmpHeader.type)
             {
-    z            case ICMP_ECHOREP:
+                case ICMP_ECHOREP:
                 {
                     if(echoReply.data.id == echoReq.id &&
                        echoReply.data.seq == echoReq.seq)
