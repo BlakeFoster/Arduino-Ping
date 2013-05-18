@@ -195,36 +195,37 @@ void ICMPPing::receiveEchoReply(const ICMPEcho& echoReq, const IPAddress& addr, 
             // to see if it originated from the request we sent out.
             switch (echoReply.data.icmpHeader.type)
             {
-            case ICMP_ECHOREP:
-                
-                if(echoReply.data.id == echoReq.id &&
-                   echoReply.data.seq == echoReq.seq)
+    z            case ICMP_ECHOREP:
                 {
-                    echoReply.status = SUCCESS;
-                    return;
+                    if(echoReply.data.id == echoReq.id &&
+                       echoReply.data.seq == echoReq.seq)
+                    {
+                        echoReply.status = SUCCESS;
+                        return;
+                    }
+                    break;
                 }
-                break;
-
-            case TIME_EXCEEDED:
-
-                uint8_t * sourceIpHeader = echoReply.data.payload;
-                unsigned int ipHeaderSize = (sourceIpHeader[0] & 0x0F)*4u;
-                uint8_t * sourceIcmpHeader = echoReply.data.payload + ipHeaderSize;
-
-                // The destination ip address in the originating packet's IP header.
-                IPAddress sourceDestAddress(sourceIpHeader + ipHeaderSize - 4);
-
-                if (!(sourceDestAddress == addr)) continue;
-
-                uint16_t sourceId  = ntohs(*(uint16_t *)(sourceIcmpHeader + 4));
-                uint16_t sourceSeq = ntohs(*(uint16_t *)(sourceIcmpHeader + 6));
-
-                if (sourceId == echoReq.id && sourceSeq == echoReq.seq)
+                case TIME_EXCEEDED:
                 {
-                    echoReply.status = BAD_RESPONSE;
-                    return;
+                    uint8_t * sourceIpHeader = echoReply.data.payload;
+                    unsigned int ipHeaderSize = (sourceIpHeader[0] & 0x0F)*4u;
+                    uint8_t * sourceIcmpHeader = echoReply.data.payload + ipHeaderSize;
+
+                    // The destination ip address in the originating packet's IP header.
+                    IPAddress sourceDestAddress(sourceIpHeader + ipHeaderSize - 4);
+
+                    if (!(sourceDestAddress == addr)) continue;
+
+                    uint16_t sourceId  = ntohs(*(uint16_t *)(sourceIcmpHeader + 4));
+                    uint16_t sourceSeq = ntohs(*(uint16_t *)(sourceIcmpHeader + 6));
+
+                    if (sourceId == echoReq.id && sourceSeq == echoReq.seq)
+                    {
+                        echoReply.status = BAD_RESPONSE;
+                        return;
+                    }
+                    break;
                 }
-                break;
             }
         }
     }
