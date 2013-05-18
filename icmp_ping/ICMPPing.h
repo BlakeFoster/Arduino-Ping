@@ -15,6 +15,7 @@
 #define ICMP_ECHOREPLY 0
 #define ICMP_ECHOREQ 8
 #define ICMP_ECHOREP 0
+#define TIME_EXCEEDED 11
 #define PING_TIMEOUT 1000
 
 typedef unsigned long time_t;
@@ -148,7 +149,7 @@ public:
 private:
 
     Status sendEchoRequest(const IPAddress& addr, const ICMPEcho& echoReq);
-    void receiveEchoReply(const ICMPEcho& echoReq, ICMPEchoReply& echoReply);
+    void receiveEchoReply(const ICMPEcho& echoReq, const IPAddress& addr, ICMPEchoReply& echoReply);
 
     uint8_t _id;
     uint8_t _nextSeq;

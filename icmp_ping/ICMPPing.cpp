@@ -84,7 +84,11 @@ void ICMPEcho::deserialize(uint8_t const * binData)
     icmpHeader.checksum = ntohs(*(uint16_t *)binData); binData += 2;
     id                  = ntohs(*(uint16_t *)binData); binData += 2;
     seq                 = ntohs(*(uint16_t *)binData); binData += 2;
-    time                = ntohl(*(time_t *)binData);   binData += 4;
+
+    if (icmpHeader.type != TIME_EXCEEDED)
+    {
+        time = ntohl(*(time_t *)binData);   binData += 4;
+    }
 
     memcpy(payload, binData, sizeof(payload));
 }
@@ -113,7 +117,7 @@ void ICMPPing::operator()(const IPAddress& addr, int nRetries, ICMPEchoReply& re
         if (result.status == SUCCESS)
         {
             byte replyAddr [4];
-            receiveEchoReply(echoReq, result);
+            receiveEchoReply(echoReq, addr, result);
         }
         if (result.status == SUCCESS)
         {
@@ -139,7 +143,7 @@ Status ICMPPing::sendEchoRequest(const IPAddress& addr, const ICMPEcho& echoReq)
     // with an endianness nightmare.
     uint8_t addri [] = {addr[0], addr[1], addr[2], addr[3]};
     W5100.writeSnDIPR(_socket, addri);
-    W5100.writeSnTTL(_socket, 42);
+    W5100.writeSnTTL(_socket, 128);
     // The port isn't used, becuause ICMP is a network-layer protocol. So we
     // write zero. This probably isn't actually necessary.
     W5100.writeSnDPORT(_socket, 0);
@@ -161,7 +165,7 @@ Status ICMPPing::sendEchoRequest(const IPAddress& addr, const ICMPEcho& echoReq)
     return SUCCESS;
 }
 
-void ICMPPing::receiveEchoReply(const ICMPEcho& echoReq, ICMPEchoReply& echoReply)
+void ICMPPing::receiveEchoReply(const ICMPEcho& echoReq, const IPAddress& addr, ICMPEchoReply& echoReply)
 {
     time_t start = millis();
     while (millis() - start < PING_TIMEOUT)
@@ -185,15 +189,42 @@ void ICMPPing::receiveEchoReply(const ICMPEcho& echoReq, ICMPEchoReply& echoRepl
             W5100.writeSnRX_RD(_socket, buffer);
             W5100.execCmdSn(_socket, Sock_RECV);
 
+            echoReply.ttl = W5100.readSnTTL(_socket);
+
             // Since there aren't any ports in ICMP, we need to manually inspect the response
             // to see if it originated from the request we sent out.
-            if (echoReply.data.icmpHeader.type == ICMP_ECHOREP &&
-                echoReply.data.id == echoReq.id &&
-                echoReply.data.seq == echoReq.seq)
+            switch (echoReply.data.icmpHeader.type)
             {
-                echoReply.ttl = W5100.readSnTTL(_socket);
-                echoReply.status = SUCCESS;
-                return;
+            case ICMP_ECHOREP:
+                
+                if(echoReply.data.id == echoReq.id &&
+                   echoReply.data.seq == echoReq.seq)
+                {
+                    echoReply.status = SUCCESS;
+                    return;
+                }
+                break;
+
+            case TIME_EXCEEDED:
+
+                uint8_t * sourceIpHeader = echoReply.data.payload;
+                unsigned int ipHeaderSize = (sourceIpHeader[0] & 0x0F)*4u;
+                uint8_t * sourceIcmpHeader = echoReply.data.payload + ipHeaderSize;
+
+                // The destination ip address in the originating packet's IP header.
+                IPAddress sourceDestAddress(sourceIpHeader + ipHeaderSize - 4);
+
+                if (!(sourceDestAddress == addr)) continue;
+
+                uint16_t sourceId  = ntohs(*(uint16_t *)(sourceIcmpHeader + 4));
+		uint16_t sourceSeq = ntohs(*(uint16_t *)(sourceIcmpHeader + 6));
+
+                if (sourceId == echoReq.id && sourceSeq == echoReq.seq)
+                {
+                    echoReply.status = BAD_RESPONSE;
+                    return;
+                }
+                break;
             }
         }
     }
