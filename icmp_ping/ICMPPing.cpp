@@ -217,7 +217,7 @@ void ICMPPing::receiveEchoReply(const ICMPEcho& echoReq, const IPAddress& addr, 
                 if (!(sourceDestAddress == addr)) continue;
 
                 uint16_t sourceId  = ntohs(*(uint16_t *)(sourceIcmpHeader + 4));
-		uint16_t sourceSeq = ntohs(*(uint16_t *)(sourceIcmpHeader + 6));
+                uint16_t sourceSeq = ntohs(*(uint16_t *)(sourceIcmpHeader + 6));
 
                 if (sourceId == echoReq.id && sourceSeq == echoReq.seq)
                 {
