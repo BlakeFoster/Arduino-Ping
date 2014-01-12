@@ -21,6 +21,7 @@ See the included sketch for example usage.
 See the header (ICMP.h) for API documentation.
 
 The master branch currently requires version 1.5.5 beta of the Arduino software. For older versions of the
-Arduino software, use version 2.1. After cloneing:
+Arduino software, use version 2.1. After cloning:
 
+cd Arduino-Ping
 git checkout version2.1
