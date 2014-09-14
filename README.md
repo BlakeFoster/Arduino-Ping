@@ -20,7 +20,7 @@ Then restart the Arduino software if necessary, and icmp_ping should be availabl
 See the included sketch for example usage.
 See the header (ICMP.h) for API documentation.
 
-The master branch currently requires version 1.5.5 beta of the Arduino software. For older versions of the
+The master branch currently requires at least version 1.5.5 beta of the Arduino software. For older versions of the
 Arduino software, use version 2.1. After cloning:
 
 cd Arduino-Ping
