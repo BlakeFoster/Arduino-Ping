@@ -173,7 +173,7 @@ void loop()
     // huzzah
     lastPingSucceeded = true;
     sprintf(buffer,
-            "Reply[%d] from: %d.%d.%d.%d: bytes=%d time=%ldms TTL=%d",
+            "Reply[%d] from: %d.%d.%d.%d: bytes=%d time=%ldms TTL=%d  MAC=%02X:%02X:%02X:%02X:%02X:%02X",
             echoResult.data.seq,
             echoResult.addr[0],
             echoResult.addr[1],
@@ -181,7 +181,13 @@ void loop()
             echoResult.addr[3],
             REQ_DATASIZE,
             millis() - echoResult.data.time,
-            echoResult.ttl);
+            echoResult.ttl,
+            echoResult.MACAddressSocket[0],
+            echoResult.MACAddressSocket[1],
+            echoResult.MACAddressSocket[2],
+            echoResult.MACAddressSocket[3],
+            echoResult.MACAddressSocket[4],
+            echoResult.MACAddressSocket[5]);
   }
 
   Serial.println(buffer);
