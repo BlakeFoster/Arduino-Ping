@@ -119,6 +119,7 @@ struct ICMPEchoReply
     uint8_t ttl;
     Status status;
     IPAddress addr;
+    uint8_t MACAddressSocket[6];
 };
 
 

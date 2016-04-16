@@ -8,7 +8,7 @@
  */
 
 #include "ICMPPing.h"
-#include <util.h>
+#include "utility/util.h"
 
 #ifdef ICMPPING_INSERT_YIELDS
 #define ICMPPING_DOYIELD()		delay(2)
@@ -148,6 +148,9 @@ void ICMPPing::operator()(const IPAddress& addr, int nRetries, ICMPEchoReply& re
             byte replyAddr [4];
         	ICMPPING_DOYIELD();
             receiveEchoReply(echoReq, addr, result);
+            
+            //For getting the MAC address of the pinged device
+            W5100.readSnDHAR(_socket, result.MACAddressSocket);
         }
         if (result.status == SUCCESS)
         {
