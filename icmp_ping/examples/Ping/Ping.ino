@@ -14,7 +14,7 @@
 
 #include <SPI.h>         
 #include <Ethernet.h>
-#include <ICMPPing.h>
+#include "ICMPPing.h"
 
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED}; // max address for ethernet shield
 byte ip[] = {192,168,2,177}; // ip address for ethernet shield
@@ -38,7 +38,7 @@ void loop()
   if (echoReply.status == SUCCESS)
   {
     sprintf(buffer,
-            "Reply[%d] from: %d.%d.%d.%d: bytes=%d time=%ldms TTL=%d",
+            "Reply[%d] from: %d.%d.%d.%d: bytes=%d time=%ldms TTL=%d  MAC=%02X:%02X:%02X:%02X:%02X:%02X",
             echoReply.data.seq,
             echoReply.addr[0],
             echoReply.addr[1],
@@ -46,8 +46,14 @@ void loop()
             echoReply.addr[3],
             REQ_DATASIZE,
             millis() - echoReply.data.time,
-            echoReply.ttl);
-  }
+            echoReply.ttl,
+            echoReply.MACAddressSocket[0],
+            echoReply.MACAddressSocket[1],
+            echoReply.MACAddressSocket[2],
+            echoReply.MACAddressSocket[3],
+            echoReply.MACAddressSocket[4],
+            echoReply.MACAddressSocket[5]);
+  }    
   else
   {
     sprintf(buffer, "Echo request failed; %d", echoReply.status);
