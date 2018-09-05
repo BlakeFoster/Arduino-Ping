@@ -8,7 +8,7 @@
  */
 
 #include "ICMPPing.h"
-#include <util.h>
+#include "utility/util.h"
 
 #ifdef ICMPPING_INSERT_YIELDS
 #define ICMPPING_DOYIELD()		delay(2)
@@ -234,6 +234,9 @@ void ICMPPing::receiveEchoReply(const ICMPEcho& echoReq, const IPAddress& addr, 
 		W5100.execCmdSn(_socket, Sock_RECV);
 
 		echoReply.ttl = W5100.readSnTTL(_socket);
+		
+		//For getting the MAC address of the pinged device
+		W5100.readSnDHAR(_socket, echoReply.MACAddressSocket);
 
 		// Since there aren't any ports in ICMP, we need to manually inspect the response
 		// to see if it originated from the request we sent out.
